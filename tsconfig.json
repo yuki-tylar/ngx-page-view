@@ -16,6 +16,12 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "importHelpers": true,
+    "paths": {
+      "page-view": [
+        "dist/page-view/page-view",
+        "dist/page-view"
+      ]
+    },
     "target": "es2017",
     "module": "es2020",
     "lib": [
