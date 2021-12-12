@@ -126,7 +126,7 @@ export class PageViewDirective {
       this.animateTo(next, next != this.current ? 300 : 100);
 
       if(this.current != next) {
-        this.onPageChanged.emit(this.current);          
+        this.onPageChanged.emit(next);          
       }
 
       this.current = next;
