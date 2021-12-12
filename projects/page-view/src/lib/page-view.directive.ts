@@ -41,6 +41,31 @@ export class PageViewDirective {
     private _el: ElementRef,
   ) {}
 
+  public animateTo(index: number = 0, duration: number = 200) {
+    if(this.el) {
+      let time = 0;
+
+      const destination = index * this.elLength;
+      const currentScroll = this.vertical ? this.el.scrollTop : this.el.scrollLeft;
+
+      this.animated = true;
+      while(time < duration) {
+        const scrollTo = currentScroll + Math.sin(time / duration * Math.PI / 2) * (destination - currentScroll);
+        setTimeout((this.vertical? _scrollVerticalTo : _scrollHorizontalTo), time, this.el, scrollTo);
+        time ++;
+      }
+      setTimeout(() => { this.animated = false; }, time);
+    }
+  }
+
+  public jumpTo(index: number = 0) {
+    if(this.el) {
+      const scrollTo = index * this.elLength;
+      if(this.vertical) { _scrollVerticalTo(this.el, scrollTo); }
+      else { _scrollHorizontalTo(this.el, scrollTo); }
+    }
+  }
+
   @HostListener('scroll') scroll() {
     if(!this.animated && !this.touched) {
       clearTimeout(this._timerAutoScroll);
@@ -60,18 +85,23 @@ export class PageViewDirective {
     this.onTouchstart();
   }
 
+
   @HostListener('mousedown') mousedown() {
     this.onTouchstart();
   }
 
-  @HostListener('window:touchmove') touchmove() {
-    if(this.touched) {
+  @HostListener('window:touchmove', ['$event']) touchmove(e: TouchEvent) {
+    if(this.touched && !this.animated) {
       this.scrolledByPointer = true;
+    }
+
+    if(this.animated) {
+      e.preventDefault();
     }
   }
 
   @HostListener('window:mousemove', ['$event']) mousemove(e: MouseEvent) {
-    if(this.touched) {
+    if(this.touched && !this.animated) {
       this.scrolledByPointer = true;
       this.el.scrollBy({top: this.vertical ? -e.movementY : 0, left: this.vertical ? 0 : -e.movementX});
     }
@@ -85,14 +115,17 @@ export class PageViewDirective {
     this.onTouchend();
   }
 
+  ngAfterViewInit() {
+    this.jumpTo(this.current);
+  }
 
-  onTouchstart() {
+  private onTouchstart() {
     this.touched = true;
     this.movement = 0;
     this.initialScrollPosition = this.vertical ? this.el.scrollTop : this.el.scrollLeft;
   }
 
-  onTouchend() {
+  private onTouchend() {
     if(this.touched) {
       this.scrolledByPointer = false;
       this.touched = false;
@@ -107,24 +140,6 @@ export class PageViewDirective {
         this.current = next;
         this.onPageChanged.emit(this.current);  
       }
-    }
-  }
-
-  animateTo(index: number = 0, duration: number = 200) {
-    const el: HTMLElement | null = this._el.nativeElement;
-    if(el) {
-      let time = 0;
-
-      const destination = index * this.elLength;
-      const currentScroll = this.vertical ? el.scrollTop : el.scrollLeft;
-
-      this.animated = true;
-      while(time < duration) {
-        const scrollTo = currentScroll + Math.sin(time / duration * Math.PI / 2) * (destination - currentScroll);
-        setTimeout((this.vertical? _scrollVerticalTo : _scrollHorizontalTo), time, this.el, scrollTo);
-        time ++;
-      }
-      setTimeout(() => { this.animated = false; }, time);
     }
   }
 }
