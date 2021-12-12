@@ -1,9 +1,11 @@
 <div style="width: 100vw; height: 100vh;">
   <ul 
+  *ngIf="mainPageIndex !== null"
   ngxPageView
   [direction]="pageViewDirection"
   [threshold]="0.3"
-  [current]="0"
+  [current]="mainPageIndex"
+  (onPageChanged)="onMainPageChanged($event)"
   style="list-style: none; padding:0;">
     <li ngxPageItem>
       <h1>ngx-page-view</h1>
