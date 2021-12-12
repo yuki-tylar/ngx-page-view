@@ -2,7 +2,7 @@
   <ul 
   ngxPageView
   [direction]="pageViewDirection"
-  [threshold]="0.2"
+  [threshold]="0.3"
   [current]="0"
   style="list-style: none; padding:0;">
     <li ngxPageItem>
@@ -25,7 +25,13 @@
       </ul>
     </li>
     <li ngxPageItem>TEST2</li>
-    <li ngxPageItem>TEST3</li>
+    <li ngxPageItem>
+      <div ngxPageView [threshold]="0.1">
+        <div ngxPageItem>TEST3-1</div>
+        <div ngxPageItem>TEST3-2</div>
+        <div ngxPageItem>TEST3-3</div>
+      </div>
+    </li>
 
   </ul>
 </div>

@@ -30,6 +30,8 @@ export class PageViewDirective {
 
   private movement: number = 0;
   private initialScrollPosition: number = 0;
+  private lastPointerMoveData: {movement: number; timestamp: number} | null = null;
+  private lastVelocity: number = 0;
 
   private touched: boolean = false;
   private scrolledByPointer = false;
@@ -49,12 +51,14 @@ export class PageViewDirective {
       const currentScroll = this.vertical ? this.el.scrollTop : this.el.scrollLeft;
 
       this.animated = true;
-      while(time < duration) {
+      while(time <= duration) {
         const scrollTo = currentScroll + Math.sin(time / duration * Math.PI / 2) * (destination - currentScroll);
         setTimeout((this.vertical? _scrollVerticalTo : _scrollHorizontalTo), time, this.el, scrollTo);
         time ++;
       }
-      setTimeout(() => { this.animated = false; }, time);
+      setTimeout(() => { 
+        this.animated = false;
+      }, time);
     }
   }
 
@@ -66,8 +70,8 @@ export class PageViewDirective {
     }
   }
 
-  @HostListener('scroll') scroll() {
-    if(!this.animated && !this.touched) {
+  @HostListener('scroll', ['$event']) scroll(e: Event) {
+    if(!this.animated && !this.scrolledByPointer) {
       clearTimeout(this._timerAutoScroll);
       
       this._timerAutoScroll = setTimeout(() => {
@@ -77,70 +81,68 @@ export class PageViewDirective {
         this.animateTo(next, 300);
         this.current = next;
         this.onPageChanged.emit(this.current);
-      }, 400);
+      }, 250);
     }
   }
 
-  @HostListener('touchstart') touchstart() {
-    this.onTouchstart();
-  }
-
-
-  @HostListener('mousedown') mousedown() {
-    this.onTouchstart();
-  }
-
-  @HostListener('window:touchmove', ['$event']) touchmove(e: TouchEvent) {
-    if(this.touched && !this.animated) {
-      this.scrolledByPointer = true;
-    }
-
-    if(this.animated) {
+  @HostListener('touchstart', ['$event']) touchstart(e: TouchEvent) {
+    if(e.touches.length == 1){
       e.preventDefault();
     }
   }
 
-  @HostListener('window:mousemove', ['$event']) mousemove(e: MouseEvent) {
-    if(this.touched && !this.animated) {
-      this.scrolledByPointer = true;
-      this.el.scrollBy({top: this.vertical ? -e.movementY : 0, left: this.vertical ? 0 : -e.movementX});
-    }
-  }
-
-  @HostListener('window:touchend') touchend() {
-    this.onTouchend();
-  }
-
-  @HostListener('window:mouseup') mouseup() {
-    this.onTouchend();
-  }
-
-  ngAfterViewInit() {
-    this.jumpTo(this.current);
-  }
-
-  private onTouchstart() {
+  @HostListener('pointerdown') pointerdown() {
     this.touched = true;
     this.movement = 0;
     this.initialScrollPosition = this.vertical ? this.el.scrollTop : this.el.scrollLeft;
   }
 
-  private onTouchend() {
+  @HostListener('window:pointermove', ['$event']) pointermove(e: PointerEvent) {
     if(this.touched) {
-      this.scrolledByPointer = false;
-      this.touched = false;
+      this.scrolledByPointer = true;
+      
+      const movement = this.vertical ? e.movementY : e.movementX;
+  
+      this.el.scrollBy({top: this.vertical ? -movement : 0, left: this.vertical ? 0 : -movement});
 
-      const currentScrollPosition = this.vertical ? this.el.scrollTop : this.el.scrollLeft;
-      this.movement = currentScrollPosition - this.initialScrollPosition;  
-
-      if(this.movement != 0) {
-        let next = this.current + (Math.floor(this.movementRatio) + (this.movementRatio % 1 >= this.threshold ? 1 : 0)) * this.movementDirection;
-        next = next <= 0 ? 0 : next >= this.el.children.length - 1 ? this.el.children.length - 1 : next;
-        this.animateTo(next, next != this.current ? 300 : 100);
-        this.current = next;
-        this.onPageChanged.emit(this.current);  
-      }
+      this.lastVelocity = this.lastPointerMoveData ?( (movement - this.lastPointerMoveData.movement) / (e.timeStamp - this.lastPointerMoveData.timestamp)) : 0;
+      this.lastPointerMoveData = {movement: movement, timestamp: e.timeStamp};
     }
+  }
+
+  @HostListener('window:pointerup') pointerup() {
+    const currentScrollPosition = this.vertical ? this.el.scrollTop : this.el.scrollLeft;
+    this.movement = currentScrollPosition - this.initialScrollPosition;  
+
+    if(this.touched && this.scrolledByPointer && this.movement != 0) {
+      let next: number;
+
+      if (Math.abs(this.lastVelocity) > 0.5) {
+        next = this.current + this.movementDirection;
+      } else {
+        next = this.current + (Math.floor(this.movementRatio) + (this.movementRatio % 1 >= this.threshold ? 1 : 0)) * this.movementDirection;
+      }
+      next = next <= 0 ? 0 : next >= this.el.children.length - 1 ? this.el.children.length - 1 : next;
+      this.animateTo(next, next != this.current ? 300 : 100);
+
+      if(this.current != next) {
+        this.onPageChanged.emit(this.current);          
+      }
+
+      this.current = next;
+    }
+
+    this.scrolledByPointer = false;
+    this.touched = false;
+    this.movement = 0;
+    this.lastVelocity = 0;
+    this.lastPointerMoveData = null;
+    this.initialScrollPosition = 0;
+  }
+
+
+  ngAfterViewInit() {
+    this.jumpTo(this.current);
   }
 }
 
